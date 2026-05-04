@@ -313,11 +313,15 @@ const videos = studentComment.video.map(video => {
 		function fillVideoMarquee() {
 			if (!sourceItems.length) return;
 
+			// 從第一個實際卡片量真實寬度，避免硬編碼在不同螢幕尺寸下誤算數量
+			// 卡片寬度為 min(82vw, 28rem)，加上 gap-4（16px）作為間距
+			const firstItem = groups[0]?.children[0] as HTMLElement | undefined;
+			const cardWidth = firstItem ? firstItem.getBoundingClientRect().width + 16 : 464; // fallback：28rem + 16px gap
+
 			const targetWidth = window.innerWidth * 1.25;
 
-			const estimatedCardWidth = 480;
-
-			const needCount = Math.max(sourceItems.length, Math.ceil(targetWidth / estimatedCardWidth));
+			const minCount = Math.max(sourceItems.length, Math.ceil(targetWidth / cardWidth));
+			const needCount = Math.ceil(minCount / sourceItems.length) * sourceItems.length;
 
 			for (const group of groups) {
 				group.replaceChildren();
@@ -330,7 +334,12 @@ const videos = studentComment.video.map(video => {
 
 		fillVideoMarquee();
 
-		window.addEventListener("resize", fillVideoMarquee);
+		let resizeTimer: ReturnType<typeof setTimeout>;
+
+		window.addEventListener("resize", () => {
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(fillVideoMarquee, 100);
+		});
 	}
 
 	videoMarqueeContainer?.addEventListener("click", e => {
