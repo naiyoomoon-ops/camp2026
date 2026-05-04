@@ -4,13 +4,35 @@ import { Image } from "astro:assets";
 import homeData from "@/data/home.json";
 
 const { masterClassSection, masterClasses } = homeData;
-const visibleMasterClasses = masterClasses.slice(0, 3);
 
 type MasterClassItem = (typeof masterClasses)[number];
+type MasterClassGroup = MasterClassItem & {
+	speakers: MasterClassItem[];
+};
+
+const groupedMasterClasses = masterClasses.reduce<MasterClassGroup[]>((groups, masterClass) => {
+	const existingGroup = groups.find(group => group.title === masterClass.title);
+
+	if (existingGroup) {
+		existingGroup.speakers.push(masterClass);
+		return groups;
+	}
+
+	groups.push({
+		...masterClass,
+		speakers: [masterClass]
+	});
+
+	return groups;
+}, []);
+
+const visibleMasterClasses = groupedMasterClasses.slice(0, 3);
+
 const topicImagePositions: Record<string, string> = {
 	"denny-huang": "54% 44%",
 	"jasper-yu": "63% 43%",
-	"ak-kuo": "58% 40%"
+	"ak-kuo": "58% 40%",
+	"harry-chang": "52% 40%"
 };
 
 const masterImages = Object.fromEntries(
@@ -55,31 +77,45 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 						<div class="master-class__topics" aria-label={masterClassSection.deckAriaLabel}>
 							{
 								visibleMasterClasses.map(masterClass => {
-									const image = getMasterImage(masterClass);
-									const topicImagePosition = topicImagePositions[masterClass.imageKey] ?? masterClass.imagePosition;
-
 									return (
-										<article class:list={["topic-card", `topic-card--${masterClass.accent}`]} style={`--topic-image-position: ${topicImagePosition}`}>
-											<figure class="topic-card__media">
-												<Image
-													src={image}
-													alt={`${masterClass.title} ${masterClass.instructor} 講師照片`}
-													class="topic-card__image"
-													loading="lazy"
-													decoding="async"
-													format="webp"
-													style="object-position: var(--topic-image-position)"
-												/>
+										<article class:list={["topic-card", `topic-card--${masterClass.accent}`]}>
+											<figure class:list={["topic-card__media", { "topic-card__media--duo": masterClass.speakers.length > 1 }]}>
+												{masterClass.speakers.map(speaker => {
+													const image = getMasterImage(speaker);
+													const topicImagePosition = topicImagePositions[speaker.imageKey] ?? speaker.imagePosition;
+
+													return (
+														<div class="topic-card__portrait">
+															<Image
+																src={image}
+																alt={`${masterClass.title} ${speaker.instructor} 講師照片`}
+																class="topic-card__image"
+																loading="lazy"
+																decoding="async"
+																format="webp"
+																style={`object-position: ${topicImagePosition}`}
+															/>
+														</div>
+													);
+												})}
 											</figure>
 											<div class="topic-card__body">
 												<h3 class="topic-card__title">{masterClass.title}</h3>
-												<p class="topic-card__instructor">{masterClass.instructor}</p>
-												<p class="topic-card__achievement">{masterClass.achievement}</p>
-												<ul class="topic-card__profile" aria-label={`${masterClass.title} 講師履歷亮點`}>
-													{masterClass.profile.map(item => (
-														<li>{item}</li>
+												<div class:list={["topic-card__speaker-list", { "topic-card__speaker-list--multiple": masterClass.speakers.length > 1 }]}>
+													{masterClass.speakers.map(speaker => (
+														<div class="topic-card__speaker">
+															<p class="topic-card__instructor">{speaker.instructor}</p>
+															<p class="topic-card__achievement">{speaker.achievement}</p>
+															{masterClass.speakers.length === 1 && (
+																<ul class="topic-card__profile" aria-label={`${speaker.instructor} 講師履歷亮點`}>
+																	{speaker.profile.map(item => (
+																		<li>{item}</li>
+																	))}
+																</ul>
+															)}
+														</div>
 													))}
-												</ul>
+												</div>
 											</div>
 										</article>
 									);
@@ -89,20 +125,26 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 					</div>
 					{
 						visibleMasterClasses.map(masterClass => {
-							const image = getMasterImage(masterClass);
-
 							return (
 								<article class:list={["master-carousel__slide", "course-slide", `course-slide--${masterClass.accent}`]} data-master-carousel-slide aria-hidden="true">
-									<figure class="course-slide__media">
-										<Image
-											src={image}
-											alt={`${masterClass.title} ${masterClass.instructor} 講師照片`}
-											class="course-slide__image"
-											loading="lazy"
-											decoding="async"
-											format="webp"
-											style={`object-position: ${masterClass.imagePosition}`}
-										/>
+									<figure class:list={["course-slide__media", { "course-slide__media--duo": masterClass.speakers.length > 1 }]}>
+										{masterClass.speakers.map(speaker => {
+											const image = getMasterImage(speaker);
+
+											return (
+												<div class="course-slide__portrait">
+													<Image
+														src={image}
+														alt={`${masterClass.title} ${speaker.instructor} 講師照片`}
+														class="course-slide__image"
+														loading="lazy"
+														decoding="async"
+														format="webp"
+														style={`object-position: ${speaker.imagePosition}`}
+													/>
+												</div>
+											);
+										})}
 									</figure>
 
 									<div class="course-slide__content">
@@ -112,15 +154,21 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 											<p class="course-slide__outcome">{masterClass.outcome}</p>
 										</div>
 
-										<div class="course-slide__speaker">
-											<p class="course-slide__speaker-label">講師</p>
-											<h3 class="course-slide__instructor">{masterClass.instructor}</h3>
-											<p class="course-slide__achievement">{masterClass.achievement}</p>
-											<ul class="course-slide__profile" aria-label={`${masterClass.title} 講師履歷亮點`}>
-												{masterClass.profile.map(item => (
-													<li>{item}</li>
+										<div class:list={["course-slide__speaker", { "course-slide__speaker--multiple": masterClass.speakers.length > 1 }]}>
+											<p class="course-slide__speaker-label">{masterClass.speakers.length > 1 ? "講師陣容" : "講師"}</p>
+											<div class="course-slide__speaker-list">
+												{masterClass.speakers.map(speaker => (
+													<div class="course-slide__speaker-card">
+														<h3 class="course-slide__instructor">{speaker.instructor}</h3>
+														<p class="course-slide__achievement">{speaker.achievement}</p>
+														<ul class="course-slide__profile" aria-label={`${speaker.instructor} 講師履歷亮點`}>
+															{speaker.profile.map(item => (
+																<li>{item}</li>
+															))}
+														</ul>
+													</div>
 												))}
-											</ul>
+											</div>
 										</div>
 									</div>
 								</article>
@@ -416,6 +464,7 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 
 	.topic-card__media {
 		position: relative;
+		display: grid;
 		box-sizing: border-box;
 		inline-size: 100%;
 		aspect-ratio: 4 / 3;
@@ -424,12 +473,27 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		background: var(--color-soft-blue);
 	}
 
+	.topic-card__media--duo {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
 	.topic-card__media::after {
 		position: absolute;
 		inset: 0;
 		content: "";
 		background: linear-gradient(180deg, var(--color-transparent) 50%, color-mix(in srgb, var(--color-foreground) 24%, var(--color-transparent)));
 		pointer-events: none;
+	}
+
+	.topic-card__portrait {
+		position: relative;
+		min-width: 0;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.topic-card__media--duo .topic-card__portrait + .topic-card__portrait {
+		border-inline-start: 0.14rem solid var(--color-foreground);
 	}
 
 	.topic-card__image {
@@ -450,10 +514,26 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		padding: clamp(0.95rem, 1.5vw, 1.3rem);
 	}
 
+	.topic-card__speaker-list,
 	.topic-card__instructor,
 	.topic-card__achievement,
 	.topic-card__profile {
 		margin: 0;
+	}
+
+	.topic-card__speaker-list,
+	.topic-card__speaker {
+		display: grid;
+		gap: clamp(0.3rem, 0.65vw, 0.5rem);
+	}
+
+	.topic-card__speaker-list--multiple {
+		gap: clamp(0.58rem, 0.95vw, 0.75rem);
+	}
+
+	.topic-card__speaker-list--multiple .topic-card__speaker + .topic-card__speaker {
+		padding-block-start: clamp(0.58rem, 0.95vw, 0.75rem);
+		border-block-start: 0.12rem solid var(--color-foreground);
 	}
 
 	.topic-card__title {
@@ -589,6 +669,7 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 
 	.course-slide__media {
 		position: relative;
+		display: grid;
 		box-sizing: border-box;
 		inline-size: 100%;
 		min-height: 100%;
@@ -598,12 +679,27 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		background: var(--color-soft-blue);
 	}
 
+	.course-slide__media--duo {
+		grid-template-rows: repeat(2, minmax(0, 1fr));
+	}
+
 	.course-slide__media::after {
 		position: absolute;
 		inset: 0;
 		content: "";
 		background: linear-gradient(180deg, var(--color-transparent) 54%, color-mix(in srgb, var(--color-foreground) 22%, var(--color-transparent)));
 		pointer-events: none;
+	}
+
+	.course-slide__portrait {
+		position: relative;
+		min-width: 0;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.course-slide__media--duo .course-slide__portrait + .course-slide__portrait {
+		border-block-start: 0.18rem solid var(--color-foreground);
 	}
 
 	.course-slide__image {
@@ -641,6 +737,23 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		border-block-start: 0.16rem solid var(--color-foreground);
 	}
 
+	.course-slide__speaker-list,
+	.course-slide__speaker-card {
+		display: grid;
+		gap: clamp(0.42rem, 0.85vw, 0.65rem);
+	}
+
+	.course-slide__speaker--multiple .course-slide__speaker-list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: start;
+		gap: clamp(0.85rem, 1.4vw, 1.2rem);
+	}
+
+	.course-slide__speaker--multiple .course-slide__speaker-card + .course-slide__speaker-card {
+		padding-inline-start: clamp(0.85rem, 1.4vw, 1.2rem);
+		border-inline-start: 0.12rem solid var(--color-foreground);
+	}
+
 	.course-slide__title,
 	.course-slide__speaker-label,
 	.course-slide__instructor,
@@ -649,6 +762,23 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 	.course-slide__summary,
 	.course-slide__outcome {
 		margin: 0;
+	}
+
+	.course-slide__speaker-card .course-slide__profile {
+		grid-template-columns: 1fr;
+	}
+
+	.course-slide__speaker--multiple .course-slide__instructor {
+		font-size: clamp(1.35rem, 2vw, 1.95rem);
+		line-height: 1.05;
+	}
+
+	.course-slide__speaker--multiple .course-slide__achievement {
+		font-size: clamp(0.92rem, 1.1vw, 1.05rem);
+	}
+
+	.course-slide__speaker--multiple .course-slide__profile li {
+		font-size: clamp(0.8rem, 0.9vw, 0.92rem);
 	}
 
 	.course-slide__speaker-label {
@@ -861,6 +991,16 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 			border-block-end: 0.18rem solid var(--color-foreground);
 		}
 
+		.course-slide__media--duo {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			grid-template-rows: 1fr;
+		}
+
+		.course-slide__media--duo .course-slide__portrait + .course-slide__portrait {
+			border-block-start: 0;
+			border-inline-start: 0.18rem solid var(--color-foreground);
+		}
+
 		.course-slide__profile {
 			grid-template-columns: 1fr;
 		}
@@ -935,6 +1075,16 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 			aspect-ratio: auto;
 		}
 
+		.topic-card__media--duo {
+			grid-template-columns: 1fr;
+			grid-template-rows: repeat(2, minmax(0, 1fr));
+		}
+
+		.topic-card__media--duo .topic-card__portrait + .topic-card__portrait {
+			border-inline-start: 0;
+			border-block-start: 0.14rem solid var(--color-foreground);
+		}
+
 		.topic-card__body {
 			gap: 0.22rem;
 			padding: 0.78rem;
@@ -972,6 +1122,17 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		.course-slide__content {
 			padding: 1rem;
 			padding-block-end: calc(1rem + var(--carousel-control-clearance));
+		}
+
+		.course-slide__speaker--multiple .course-slide__speaker-list {
+			grid-template-columns: 1fr;
+		}
+
+		.course-slide__speaker--multiple .course-slide__speaker-card + .course-slide__speaker-card {
+			padding-block-start: 0.8rem;
+			padding-inline-start: 0;
+			border-block-start: 0.12rem solid var(--color-foreground);
+			border-inline-start: 0;
 		}
 
 		.course-slide__summary {
