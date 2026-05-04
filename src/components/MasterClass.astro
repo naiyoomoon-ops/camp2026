@@ -227,6 +227,26 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		let isProgrammaticScroll = false;
 		let pointerStartX = 0;
 		let didDrag = false;
+		let viewportHeightFrame = 0;
+
+		const updateViewportHeight = () => {
+			if (!viewport) {
+				return;
+			}
+
+			const activeSlide = slides[activeIndex];
+
+			if (!activeSlide) {
+				return;
+			}
+
+			viewport.style.setProperty("--master-carousel-active-height", `${Math.ceil(activeSlide.getBoundingClientRect().height)}px`);
+		};
+
+		const queueViewportHeightUpdate = () => {
+			window.cancelAnimationFrame(viewportHeightFrame);
+			viewportHeightFrame = window.requestAnimationFrame(updateViewportHeight);
+		};
 
 		const updateTabIndicator = () => {
 			const activeTab = tabs[activeIndex];
@@ -258,6 +278,7 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 			});
 
 			updateTabIndicator();
+			queueViewportHeightUpdate();
 		};
 
 		const getSlideScrollLeft = (slide: HTMLElement) => {
@@ -327,6 +348,10 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 				setActiveSlide(slideIndex);
 			});
 		});
+
+		const slideResizeObserver = "ResizeObserver" in window ? new ResizeObserver(queueViewportHeightUpdate) : null;
+		slides.forEach(slide => slideResizeObserver?.observe(slide));
+		window.addEventListener("resize", queueViewportHeightUpdate);
 
 		viewport?.addEventListener(
 			"scroll",
@@ -1039,12 +1064,17 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		}
 
 		.master-carousel__track {
+			align-items: flex-start;
 			width: 100%;
 			padding-inline: 0;
 		}
 
 		.master-carousel__slide {
 			flex-basis: 100%;
+		}
+
+		.master-carousel__viewport {
+			block-size: var(--master-carousel-active-height, auto);
 		}
 
 		.master-class__content {
@@ -1126,6 +1156,7 @@ const getMasterImage = (masterClass: MasterClassItem) => {
 		}
 
 		.course-slide__content {
+			align-self: start;
 			padding: 1rem;
 		}
 
