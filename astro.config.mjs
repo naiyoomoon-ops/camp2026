@@ -59,9 +59,7 @@ export default defineConfig({
 	},
 
 	integrations: [
-		sitemap({
-			lastmod: new Date()
-		}),
+		sitemap(),
 		favicons({
 			name: "SITCON Camp 2026",
 			short_name: "SITCON Camp",
