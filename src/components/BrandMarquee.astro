@@ -44,12 +44,12 @@ const marqueeItems = Array.from({ length: brandMarquee.repeatItems }, (_, index)
 		position: relative;
 		isolation: isolate;
 		overflow: hidden;
+		padding-block: clamp(2.5rem, 5.5vw, 4.75rem);
 		background: var(--color-background);
 	}
 
 	.brand-marquee__viewport {
 		overflow: hidden;
-		padding-block: clamp(0.45rem, 0.9vw, 0.75rem);
 	}
 
 	.brand-marquee__track {
